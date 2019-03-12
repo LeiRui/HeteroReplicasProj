@@ -210,3 +210,4 @@ script finale_ds2.log
 time ./cqlsh --request-timeout=20000000 -f tpch_df1_R1_52.74_sqls.txt
 ```
 注意：request-timeout设置得比较大，用于防止命令行查询时间过长断开。
+注：script是用于记录屏幕输出信息，用于后续分析。
