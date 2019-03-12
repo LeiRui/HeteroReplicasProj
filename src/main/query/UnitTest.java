@@ -41,7 +41,7 @@ public class UnitTest {
     // 输出符合描述参数分布的模拟确定查询参数集合
     List<RangeQuery[]> rangeQueries = queryPicture.getDefinite(CKdist);
 
-    String sql = queryPicture.getSql("cestbon","tb2",1,CKdist,rangeQueries.get(0)[0]);
+    String sql = QueryPicture.getSql("cestbon","tb2",1,ckn,rangeQueries.get(0)[0]);
     System.out.println(sql);
 
   }
