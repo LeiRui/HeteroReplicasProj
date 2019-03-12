@@ -88,9 +88,8 @@ public class QueryPicture {
   }
 
   // 产生相应的Cassandra sql语句
-  public static String getSql(String ks, String cf, int pkey, List<Column> CKdist, RangeQuery q) {
+  public static String getSql(String ks, String cf, int pkey, int ckn, RangeQuery q) {
     String q_format = "select count(*) from " + ks + "." + cf + " where pkey=" + pkey;
-    int ckn = CKdist.size();
     for (int k = 0; k < ckn; k++) {
       // 范围查询列
       if (k == q.qckn - 1) { // 注意qckn从1开始，所以这里要减1

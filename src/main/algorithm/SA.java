@@ -1,21 +1,27 @@
 package algorithm;
 
-import model.Column;
-import model.CostModel;
 import common.Constant;
-import query.QueryPicture;
-import query.RangeQuery;
-import replica.AckSeq;
-import replica.XAckSeq;
-
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import model.Column;
+import model.CostModel;
+import query.QueryPicture;
+import query.RangeQuery;
+import replica.AckSeq;
+import replica.XAckSeq;
 
 public class SA {
+
   // 统一无异构优化数据存储结构和异构
   public boolean isDiffReplicated = false;
 
@@ -57,7 +63,8 @@ public class SA {
   public int[] pos_2; // 模拟退火算法中产生新状态，控制状态局部变化范围的终点位置
 
   public SA(BigDecimal totalRowNumber, int ckn, List<Column> CKdist,
-      int fetchRowCnt, double costModel_k, double costModel_b, double cost_session_around, double cost_request_around,
+      int fetchRowCnt, double costModel_k, double costModel_b, double cost_session_around,
+      double cost_request_around,
       QueryPicture queryPicture,
       int X) {
     this.totalRowNumber = totalRowNumber;
@@ -99,12 +106,8 @@ public class SA {
   }
 
   /**
-   * 关键的状态评价函数，其中recordCostBoard全盘重新计算
-   * <p>
-   * 输入：一个状态,X个异构副本组成一个状态解
-   * 分流策略：最小Cost
-   * 状态目标函数值：TotalCost = max(sum Cost)
-   * 输出：输入状态的目标函数值TotalCost
+   * 关键的状态评价函数，其中recordCostBoard全盘重新计算 <p> 输入：一个状态,X个异构副本组成一个状态解 分流策略：最小Cost 状态目标函数值：TotalCost =
+   * max(sum Cost) 输出：输入状态的目标函数值TotalCost
    *
    * @param xackSeq X个异构副本组成一个状态解
    */
@@ -125,7 +128,8 @@ public class SA {
         CostModel h = new CostModel(totalRowNumber, ckn, CKdist,
             q.qckn, q.qck_r1_abs, q.qck_r2_abs, q.qck_p_abs,
             xackSeq[0].ackSeq);
-        double chooseCost = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around, cost_request_around);
+        double chooseCost = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around,
+            cost_request_around);
         if (isDiffReplicated) {
           recordCostBoard.get(k)[i][0] = chooseCost;
           double tmpCost;
@@ -133,7 +137,8 @@ public class SA {
             h = new CostModel(totalRowNumber, ckn, CKdist,
                 q.qckn, q.qck_r1_abs, q.qck_r2_abs, q.qck_p_abs,
                 xackSeq[j].ackSeq);
-            tmpCost = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around, cost_request_around);
+            tmpCost = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around,
+                cost_request_around);
             recordCostBoard.get(k)[i][j] = tmpCost;
             double res = tmpCost - chooseCost;
             if (res < 0) {
@@ -190,21 +195,21 @@ public class SA {
     }
 
     //打印结果
-    if(Constant.isPrint) {
+    if (Constant.isPrint) {
       System.out.print(String.format("Cost:%.2f s| ", Cost));
       for (int i = 0; i < X; i++) {
-        System.out.print(String.format("R%d%s:%.2f s,", i + 1, xackSeq[i], XCostload[i])); // 用查询执行耗时作为load负载评价
+        System.out.print(
+            String.format("R%d%s:%.2f s,", i + 1, xackSeq[i], XCostload[i])); // 用查询执行耗时作为load负载评价
       }
       System.out.println("");
     }
   }
 
   /**
-   * 关键的状态评价函数 其中利用recordCostBoard实现记忆式更新计算，返回更新后的candidateRecordCostBoard
-   * Note: 该函数只适合异构副本 因为关于查询路由的方式。
+   * 关键的状态评价函数 其中利用recordCostBoard实现记忆式更新计算，返回更新后的candidateRecordCostBoard Note: 该函数只适合异构副本
+   * 因为关于查询路由的方式。
    *
-   * 减少了board每次需要重新计算的单元数量，但是每次需要先对recordCostBoard复制备份一遍，
-   * 在复制后的上面进行修改，因此这次计算的nextAckSeq未必会被接受，如果没被接受维持原状态，那么这一次的recordCostBoard的更改应该不作数
+   * 减少了board每次需要重新计算的单元数量，但是每次需要先对recordCostBoard复制备份一遍， 在复制后的上面进行修改，因此这次计算的nextAckSeq未必会被接受，如果没被接受维持原状态，那么这一次的recordCostBoard的更改应该不作数
    * 不可以直接在原来的recordCostBoard上直接改
    */
   public List<double[][]> calculate_remember(AckSeq[] xackSeq) {
@@ -242,7 +247,8 @@ public class SA {
               q.qckn, q.qck_r1_abs, q.qck_r2_abs, q.qck_p_abs,
               ackSeq.ackSeq);
           //更新
-          res.get(j)[z][i] = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around, cost_request_around);
+          res.get(j)[z][i] = h.calculate(fetchRowCnt, costModel_k, costModel_b, cost_session_around,
+              cost_request_around);
         }
       }
     }
@@ -302,10 +308,11 @@ public class SA {
     }
 
     //打印结果
-    if(Constant.isPrint) {
+    if (Constant.isPrint) {
       System.out.print(String.format("Cost:%.2f s| ", Cost));
       for (int i = 0; i < X; i++) {
-        System.out.print(String.format("R%d%s:%.2f s,", i + 1, xackSeq[i], XCostload[i])); // 用查询执行耗时作为load负载评价
+        System.out.print(
+            String.format("R%d%s:%.2f s,", i + 1, xackSeq[i], XCostload[i])); // 用查询执行耗时作为load负载评价
       }
       System.out.println("");
     }
@@ -314,11 +321,7 @@ public class SA {
   }
 
   /**
-   * @param ackSeq
-   * @param pos1
-   * @param pos2
-   * @param qcki   从1开始 ck1 ck2 ... ckn 因为xcakSeq也是从1开始的
-   * @return
+   * @param qcki 从1开始 ck1 ck2 ... ckn 因为xcakSeq也是从1开始的
    */
   private boolean ifcontains(AckSeq ackSeq, int pos1, int pos2, int qcki) {
     int[] ackSeq_ = ackSeq.ackSeq;
@@ -353,8 +356,9 @@ public class SA {
       int[] singleChoose = qChooseX.get(k);
       for (int j = 0; j < singleChoose.length; j++) {
         int ultimateChoose = singleChoose[j];
-        pws.get(ultimateChoose).println(queryPicture.getSql(Constant.ks, Constant.cf[ultimateChoose], Constant.pkey[ultimateChoose],
-            CKdist, singleQueries[j]));
+        pws.get(ultimateChoose).println(QueryPicture
+            .getSql(Constant.ks, Constant.cf[ultimateChoose], Constant.pkey[ultimateChoose],
+                ckn, singleQueries[j]));
       }
     }
 
@@ -376,7 +380,7 @@ public class SA {
 //        for (int j = 0; j < singleChoose.length; j++) {
 //          int ultimateChoose = singleChoose[j];
 //          pw_.println(queryPicture.getSql(Constant.ks, Constant.cf[ultimateChoose], Constant.pkey[ultimateChoose],
-//              CKdist, singleQueries[j]));
+//              ckn, singleQueries[j]));
 //        }
 //      }
 //      pw_.close();
@@ -385,21 +389,9 @@ public class SA {
 
 
   /**
-   * 模拟退火算法
-   * 搜索排序键排列，找到使得在给定数据和查询集的条件下，H模型代价最小（已经验证H模型代价和真实查询代价的一致性）
-   * 关键环节：
-   * 1. 初温，初始解
-   * 2. 状态产生函数
-   * 3. 状态接受函数
-   * 4. 退温函数
-   * 5. 抽样稳定准则
-   * 6. 收敛准则
-   * <p>
-   * X个异构副本组成一个状态解
-   * 分流策略：简单的代价最小原则
-   * <p>
-   * SA一步式尚未考虑负载均衡代价：找到HR近似最小的一组解
-   * 状态目标值为HR
+   * 模拟退火算法 搜索排序键排列，找到使得在给定数据和查询集的条件下，H模型代价最小（已经验证H模型代价和真实查询代价的一致性） 关键环节： 1. 初温，初始解 2. 状态产生函数 3.
+   * 状态接受函数 4. 退温函数 5. 抽样稳定准则 6. 收敛准则 <p> X个异构副本组成一个状态解 分流策略：简单的代价最小原则 <p>
+   * SA一步式尚未考虑负载均衡代价：找到HR近似最小的一组解 状态目标值为HR
    */
   public double SA(boolean isRecordProcess) {
     PrintWriter pw = null;
@@ -429,7 +421,9 @@ public class SA {
         calculate(xackSeqList.get(j));
         tmp = Math.abs(tmp - Cost);
         if ((tmp - maxDeltaC) > 0) // tmp > maxDeltaB
+        {
           maxDeltaC = tmp;
+        }
       }
     }
     double pr = 0.8;
@@ -437,7 +431,7 @@ public class SA {
       maxDeltaC = 0.001;
     }
     double t0 = -maxDeltaC / Math.log(pr);
-    if(Constant.isPrint) {
+    if (Constant.isPrint) {
       System.out.println("初温为：" + t0);
     }
 
@@ -484,8 +478,7 @@ public class SA {
         if (isDiffReplicated && Constant.isAccelerate) {
           // 增量式 加速一点点 Cost会被改变
           candidataRecordCostBoard = calculate_remember(nextAckSeq);
-        }
-        else {
+        } else {
           //就用原来的没加速的
           calculate(nextAckSeq);
         }
@@ -494,29 +487,28 @@ public class SA {
         double threshold;
         if (delta <= 0) {
           threshold = 1;
-          if(Constant.isPrint) {
+          if (Constant.isPrint) {
             System.out.println("新状态不比现在状态差");
           }
         } else {
           threshold = Math.exp(-delta / t0); //TODO
-          if(Constant.isPrint) {
+          if (Constant.isPrint) {
             System.out.println("新状态比现在状态差");
           }
         }
 
-
         if (Math.random() <= threshold) { // 概率接受，替换当前状态
           currentAckSeq = nextAckSeq;
-          if(Constant.isPrint) {
+          if (Constant.isPrint) {
             System.out.println("接受新状态");
           }
           // Cost就是现在更新后的Cost
-          if(isDiffReplicated&&Constant.isAccelerate) {
+          if (isDiffReplicated && Constant.isAccelerate) {
             recordCostBoard = candidataRecordCostBoard;
           }
         } else {// 否则保持当前状态不变，此时currentAckSeq、recordCostBoard都是原本的值
           Cost = currentCost;//恢复原来解的状态值
-          if(Constant.isPrint) {
+          if (Constant.isPrint) {
             System.out.println("维持当前状态不变");
           }
         }
@@ -525,12 +517,12 @@ public class SA {
       if (Cost_best != Cost_best_bigloop) {
         endCount = 0; // 重新计数
         Cost_best_bigloop = Cost_best; // 把当前最小值传递给外圈循环
-        if(Constant.isPrint) {
+        if (Constant.isPrint) {
           System.out.println("【这次退温BEST SO FAR改变】");
         }
       } else { // 这次退温后best_so_far和上次比没有改变
         endCount++;
-        if(Constant.isPrint) {
+        if (Constant.isPrint) {
           System.out.println(String.format("【这次退温BEST SO FAR连续%d次没有改变】", endCount));
         }
       }
@@ -565,7 +557,7 @@ public class SA {
     System.out.println(String.format("目标值Cost近似最小为：%.2f (s)", Cost));
 
     //记录输出解的查询路由
-    if(Constant.isGetSqls) {
+    if (Constant.isGetSqls) {
       pws = new ArrayList<>();
       for (int i = 0; i < X; i++) {
         try {
@@ -581,8 +573,9 @@ public class SA {
         int[] singleChoose = qChooseX.get(k);
         for (int j = 0; j < singleChoose.length; j++) {
           int ultimateChoose = singleChoose[j];
-          pws.get(ultimateChoose).println(queryPicture.getSql(Constant.ks, Constant.cf[ultimateChoose], Constant.pkey[ultimateChoose],
-              CKdist, singleQueries[j]));
+          pws.get(ultimateChoose).println(QueryPicture
+              .getSql(Constant.ks, Constant.cf[ultimateChoose], Constant.pkey[ultimateChoose],
+                  ckn, singleQueries[j]));
         }
       }
       for (PrintWriter pw_ : pws) {
@@ -603,7 +596,7 @@ public class SA {
 //        int[] singleChoose = qChooseX.get(k);
 //        for (int j = 0; j < singleChoose.length; j++) {
 //          pw_.println(queryPicture.getSql(Constant.ks, Constant.cf[0], Constant.pkey[0],
-//              CKdist, singleQueries[j]));
+//              ckn, singleQueries[j]));
 //        }
 //      }
 //      pw_.close();
@@ -651,9 +644,9 @@ public class SA {
         int pos1 = random.nextInt(ckn); // 0~ckn-1
         int pos2 = random.nextInt(ckn);
         while (true) {
-          if (pos2 != pos1)
+          if (pos2 != pos1) {
             break;
-          else {
+          } else {
             pos2 = random.nextInt(ckn);
           }
         }
@@ -671,9 +664,9 @@ public class SA {
       int pos1 = random.nextInt(ckn); // 0~ckn-1
       int pos2 = random.nextInt(ckn);
       while (true) {
-        if (pos2 != pos1)
+        if (pos2 != pos1) {
           break;
-        else {
+        } else {
           pos2 = random.nextInt(ckn);
         }
       }
@@ -695,10 +688,7 @@ public class SA {
   }
 
   /**
-   * 状态产生函数/邻域函数：由产生候选解的方式和候选解产生的概率分布两部分组成。
-   * 出发点：尽可能保证产生的候选解遍布全部解空间
-   *
-   * @param ackSeq
+   * 状态产生函数/邻域函数：由产生候选解的方式和候选解产生的概率分布两部分组成。 出发点：尽可能保证产生的候选解遍布全部解空间
    */
   private int[] generateNewState(int[] ackSeq, int pos1, int pos2) {
     int[] nextAckSeq = new int[ckn];
